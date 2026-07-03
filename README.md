@@ -97,13 +97,15 @@ in the order the work was actually done (not filename year):
    reduced element count) and additional comparison against 2-refinement
    state-of-the-art on Hausdorff ratio.
 
-**For working with this repo's source code specifically**, refer
-primarily to paper 4 (`Tong 2026 HexOpt Rectified Hybrid Quadratic
-Jacobian.pdf`) — it's the published, final description of the exact
-method `meshQuality.cpp`/`optimizer.cpp` implement (AL + L-BFGS +
-Armijo line search driving a ReHQJ objective, with Laplacian smoothing).
-Paper 2 (the 2024 arXiv preprint) is useful background for how the
-method evolved but describes an earlier, superseded objective function.
+**For working with this repo's source code specifically**, paper 4
+(`Tong 2026 HexOpt Rectified Hybrid Quadratic Jacobian.pdf`) is the
+published, final description of the *intended* method (AL + L-BFGS +
+Armijo line search driving a ReHQJ objective, with Laplacian
+smoothing). **However, as of 2026-07-03, `meshQuality.cpp` does not
+actually implement that pipeline** — see the update log below. It's a
+fixed-step steepest-descent baseline, confirmed by the author. Paper 2
+(the 2024 arXiv preprint) is useful background for how the method
+evolved but describes an earlier, superseded objective function.
 
 ## Update log
 
@@ -167,3 +169,32 @@ method evolved but describes an earlier, superseded objective function.
   Hua Tong asking which branch/commit (if any, public) corresponds to
   the code that produced Table 1's results, and whether the full
   AL/L-BFGS/ReHQJ implementation is available.
+- Hua Tong replied, confirming the diagnosis,
+
+  > Thanks for catching this — you're right that the current public code
+  > only contains the fixed‑step steepest descent baseline, not the
+  > L‑BFGS implementation. I apologize for the confusion: I cleaned up
+  > the repo and intended to push the final version, but I accidentally
+  > deleted my local L‑BFGS working copy later and forgot to update it.
+  > I may write a new one in the future. For benchmarking, please use
+  > your own machine's timing, as platform differences affect absolute
+  > numbers.
+  >
+  > Best regards,
+  >
+  > Hua Tong
+  >
+  > Ph.D. student in Computational Bio-Modeling Lab
+  >
+  > Department of Mechanical Engineering
+  >
+  > Carnegie Mellon University
+
+  **Conclusion: the full AL + L-BFGS + ReHQJ implementation is not
+  currently available in this repo (either branch), and timing/quality
+  reproduction against Table 1's exact values is not possible
+  until/unless it's re-released.**
+  
+  Future benchmarking here should
+  report our own relative timings (e.g. phase breakdown, model-to-model
+  comparisons) rather than absolute comparisons to Table 1.
