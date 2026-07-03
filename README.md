@@ -127,3 +127,41 @@ method evolved but describes an earlier, superseded objective function.
 - Confirmed the project builds cleanly on macOS (Apple Clang 21,
   arm64) with only harmless `-Wformat` warnings in `optimizer.cpp`, and
   produced a working `build/HexOpt` binary.
+- Attempted to reproduce the bunny result from Table 1 (PostSJ 0.44,
+  ~8s/18s original/perturbed). Refactored `optimizer.cpp`'s `main()` to
+  take the four I/O filenames plus an optional max-runtime-seconds
+  budget as CLI arguments instead of hardcoded strings, and added
+  `std::chrono`-based timing around the main phases (file I/O, surface
+  setup, `gradient()`, `lapSmth()`, VTK writes).
+- Ran `bunny.vtk` and `bunnyPer.vtk` with a 100s budget: >99.9% of wall
+  time is inside `gradient()` in both cases (I/O and setup are
+  sub-10ms), but convergence was 10-50x slower than Table 1 reports —
+  only reached Θ=0.02 (bunny.vtk) or never finished untangling
+  (bunnyPer.vtk) in 100s. Ruled out OpenMP overhead (disabling threads
+  made it slower, not faster) and missing optimizer flags (confirmed
+  `-O3 -DNDEBUG` was applied).
+- Root cause: inspected `gradient()` in `meshQuality.cpp` directly and
+  found no L-BFGS, Augmented Lagrangian, or Armijo line search anywhere
+  in the file — the "still improving Jacobian" branch is a fixed-step
+  (`1e-3`) normalized steepest descent, i.e. the older fixed-learning-rate
+  baseline the paper compares *against* (attributed to `HybridOctree_Hex`),
+  not HexOpt's own AL/L-BFGS/ReHQJ method from the paper.
+- Discovered a second, orphan `master` branch on `CMU-CBML/HexOpt`
+  (single commit `d0ad339`, 2026-02-09, same author as the `main`
+  deletion commit, no shared history with `main`, no README). It
+  replaces the old file layout with a class-based rewrite
+  (`main.cpp` + `Mesh_Optimization.h`, `Mesh_Embedding.h`,
+  `Mesh_Projection.h`, etc.), but inspection showed it *also* uses a
+  fixed `learning_rate` and fixed `lambda_projection` penalty weight,
+  with no adaptive Lagrange multiplier updates or L-BFGS Hessian
+  approximation. GitHub's default branch for the repo is confirmed
+  `main`. Concluded neither branch contains the actual AL + L-BFGS +
+  ReHQJ algorithm described in the 2026 CAD paper — the timing gap
+  versus Table 1 is not a build or reproduction bug, but a gap between
+  the published algorithm and what's currently public.
+- Decided not to merge/restore `master` into this fork's `main` (not
+  demonstrably more authoritative, and pulling in unrelated orphan
+  history would be messy). Paused further work on `main` and emailed
+  Hua Tong asking which branch/commit (if any, public) corresponds to
+  the code that produced Table 1's results, and whether the full
+  AL/L-BFGS/ReHQJ implementation is available.
