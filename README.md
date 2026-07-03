@@ -148,14 +148,16 @@ method evolved but describes an earlier, superseded objective function.
   not HexOpt's own AL/L-BFGS/ReHQJ method from the paper.
 - Discovered a second, orphan `master` branch on `CMU-CBML/HexOpt`
   (single commit `d0ad339`, 2026-02-09, same author as the `main`
-  deletion commit, no shared history with `main`, no README). It
+  deletion commit, no shared history with `main`, no README). 
+    - It
   replaces the old file layout with a class-based rewrite
   (`main.cpp` + `Mesh_Optimization.h`, `Mesh_Embedding.h`,
   `Mesh_Projection.h`, etc.), but inspection showed it *also* uses a
   fixed `learning_rate` and fixed `lambda_projection` penalty weight,
   with no adaptive Lagrange multiplier updates or L-BFGS Hessian
   approximation. GitHub's default branch for the repo is confirmed
-  `main`. Concluded neither branch contains the actual AL + L-BFGS +
+  `main`. 
+  - Concluded neither branch contains the actual AL + L-BFGS +
   ReHQJ algorithm described in the 2026 CAD paper — the timing gap
   versus Table 1 is not a build or reproduction bug, but a **gap** between
   the algorithm published in CAD 2026 and that code that is currently public on GitHub.
