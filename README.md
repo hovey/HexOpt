@@ -158,7 +158,7 @@ method evolved but describes an earlier, superseded objective function.
   `main`. Concluded neither branch contains the actual AL + L-BFGS +
   ReHQJ algorithm described in the 2026 CAD paper — the timing gap
   versus Table 1 is not a build or reproduction bug, but a **gap** between
-  the algorithm published in CAD 2026 and that code that currently public on GitHub.
+  the algorithm published in CAD 2026 and that code that is currently public on GitHub.
 - Decided not to merge/restore `master` into this fork's `main` (not
   demonstrably more authoritative, and pulling in unrelated orphan
   history would be messy). Paused further work on `main` and emailed
