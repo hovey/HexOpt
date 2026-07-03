@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cfloat> // DBL_MAX: MSVC pulls this in transitively, Apple Clang does not
 #include <iostream>
 #include <omp.h>
 #include <unordered_map>
