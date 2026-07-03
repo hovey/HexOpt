@@ -1,3 +1,6 @@
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <iostream>
 #include <omp.h>
@@ -9,15 +12,30 @@
 #include "geometry.h"
 #include "meshQuality.h"
 
-int main() {
+using Clock = std::chrono::steady_clock;
+static double elapsedSec(const Clock::time_point& start) {
+    return std::chrono::duration<double>(Clock::now() - start).count();
+}
+
+int main(int argc, char** argv) {
     // parallel computing
     omp_set_dynamic(1);
 
     // filename
-    const char* triFileName = "isidore_horse.obj";
-    const char* hexFileName = "isidore_horse.vtk";
-    const char* ftrFileName = "mid2Fem.txt";
-    const char* outputHexFileName = "isidore_horse2Opt.vtk";
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0]
+                   << " <tri.obj> <hex.vtk> <features.txt> <output.vtk> [maxRuntimeSec]" << std::endl;
+        return 1;
+    }
+    const char* triFileName = argv[1];
+    const char* hexFileName = argv[2];
+    const char* ftrFileName = argv[3];
+    const char* outputHexFileName = argv[4];
+    const double maxRuntimeSec = argc >= 6 ? std::atof(argv[5]) : 100.0;
+
+    const Clock::time_point tStart = Clock::now();
+    double tReadInput = 0.0, tSurfSetup = 0.0, tGradient = 0.0, tLapSmth = 0.0, tWriteOutput = 0.0;
+    Clock::time_point tPhase = Clock::now();
     // declare verts and tris
     std::vector<std::vector<int>> tri;
     std::vector<std::vector<double>> triX;
@@ -113,7 +131,9 @@ int main() {
         }
     }
     fclose(dataFile);
-    
+    tReadInput = elapsedSec(tPhase);
+    tPhase = Clock::now();
+
     // get surf pts
     std::unordered_map<size_t, std::vector<int>> faceHashTable;// isOnFace
     faceHashTable.reserve(eNum);
@@ -148,6 +168,7 @@ int main() {
         surfD3[i] = surf[i] / 3;
         isInside[surfD3[i]] = i;
     }
+    tSurfSetup = elapsedSec(tPhase);
 
     // declare optimization vars
     int iter = 0, pNum3 = 3 * pNum;
@@ -205,7 +226,9 @@ int main() {
     exit(-1);*/
 
     // optimization
-    while (true) {
+    const Clock::time_point tOptStart = Clock::now();
+    double lastReportedMinSJ = eFSJ ? -sJThres : 0.0;
+    while (elapsedSec(tOptStart) < maxRuntimeSec) {
         // check finish
         if (eFSJ) {
             if (fitting) {// uplevel sJ
@@ -213,6 +236,7 @@ int main() {
                 std::fill(totGrad.begin(), totGrad.end(), 1.0);
 
                 // write to vtk file
+                tPhase = Clock::now();
                 dataFile = fopen(outputHexFileName, "w");
                 fprintf(dataFile, "# vtk DataFile Version 2.0\n");
                 fprintf(dataFile, "HexOpt\n");
@@ -226,20 +250,28 @@ int main() {
                 fprintf(dataFile, "CELL_TYPES %i\n", eNum);
                 for (i = 0; i < eNum; ++i) fprintf(dataFile, "%i\n", 12);
                 fclose(dataFile);
+                tWriteOutput += elapsedSec(tPhase);
+
+                tPhase = Clock::now();
                 lapSmth(x, adjPts, pNum, pNumM3);
+                tLapSmth += elapsedSec(tPhase);
+
+                lastReportedMinSJ = -sJThres;
                 std::cout << iter << ","<<-sJThres<<std::endl;
                 sJThres -= .01;
             }
         }
 
         // get gradient
+        tPhase = Clock::now();
         eFSJ = gradient(tri, triX, triEdgeX, triENum,
             edgeFtrX, hexPtType,
             x, hex, eNum, pNum3,
             surf, surfD3, sPNum, sPNumM3, surfX,
             totGrad, chkElem,
             sJThres, fitting);
-        
+        tGradient += elapsedSec(tPhase);
+
         // print
         ++iter;
         if (iter % 1000 == 0) {
@@ -249,5 +281,16 @@ int main() {
             std::cout << "Min SJ " << eFSJ << "\t\tFitting " << fitting << std::endl;
         }
     }
+
+    const double tTotal = elapsedSec(tStart);
+    std::cerr << std::endl << "=== Timing summary (" << outputHexFileName << ") ===" << std::endl
+               << "  Read input:     " << tReadInput << " s" << std::endl
+               << "  Surface setup:  " << tSurfSetup << " s" << std::endl
+               << "  gradient() sum: " << tGradient << " s" << std::endl
+               << "  lapSmth() sum:  " << tLapSmth << " s" << std::endl
+               << "  VTK write sum:  " << tWriteOutput << " s" << std::endl
+               << "  Total wall time:" << tTotal << " s" << std::endl
+               << "  Iterations:     " << iter << std::endl
+               << "  Last reported min SJ (threshold reached): " << lastReportedMinSJ << std::endl;
     return 0;
 }
